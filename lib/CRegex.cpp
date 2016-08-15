@@ -1,6 +1,6 @@
 #include "CRegex.h"
-#include <locale.h>
 
+/*
 
 CRegex::CRegex(const char *str, int case_sensitive)
 {
@@ -26,7 +26,6 @@ int CRegex::match(const char * str, int nullpattern, int nullstr)
     return !rval;
 }
 
-/*
 int CRegex::replace(const char * str,const char * Pattern, const char * replacestr ,char * result)
 {
     size_t pos=0,len=strlen(replacestr);
