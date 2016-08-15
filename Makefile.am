@@ -1,1 +1,1 @@
-SUBDIRS=lib regex
+SUBDIRS=lib regex lconv

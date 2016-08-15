@@ -28,7 +28,8 @@ AC_FUNC_MALLOC
 
 AC_CONFIG_FILES([Makefile
         lib/Makefile
-        regex/Makefile])
+        regex/Makefile
+        lconv/Makefile])
 
 
 AC_OUTPUT
