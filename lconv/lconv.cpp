@@ -100,17 +100,25 @@ void parseArgs(int argc, const char* argv[]){
             if(i+1<argc){
                 ++ i;
                 fromcode = argv[i];
+                continue;
             }
         }
         else if(!strcmp(argv[i], "-t")){
             if(i+1<argc){
                 ++ i;
                 tocode = argv[i];
+                continue;
             }
         }
-        else{
-            break;
+        else if(!strcmp(argv[i], "-i")){
+            if(i+1<argc){
+                ++ i;
+                inputFileName = argv[i];
+                continue;
+            }
         }
+
+        break;
     }
 }
 
@@ -166,7 +174,7 @@ int main(int argc, const char* argv[]){
                 }
             }
 
-            fprintf(output, "%s", line);
+            fprintf(output, "%s", out);
             break;
         }
     }
