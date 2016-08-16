@@ -2,188 +2,94 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iconv.h>
 
-const char* fromcode = NULL;
-const char* tocode = NULL;
+#include "../lib/IOApp.h"
+#include "../lib/Conv.h"
 
-const char* inputFileName = NULL;
-const char* outputFileName = NULL;
+class Lconv: public IOApp{
+public:
+    Lconv(){
+        fromcode = NULL;
+        tocode = NULL;
+    }
 
-FILE* input=NULL;
-FILE* output=NULL;
+    int prepare();
+    void printHelp(const char* cmd);
+    virtual int handleLine(Buffer& buf);
+    virtual int parseArgs(int argc, const char* argv[], int& i);
 
-int bufSize = 1024*1024;
+private:
+    const char* fromcode;
+    const char* tocode;
 
-char* line=NULL;
-size_t lineLen=0;
+    Conv conv;
+    Buffer buf;
+};
 
-char* buf=NULL;
-size_t bufLen=0;
+void Lconv::printHelp(const char* cmd){
+    IOApp::printHelp(cmd);
 
-
-void printHelp(const char* cmd){
-    printf("%s [-i input] [-o output] -f <CoderName> -t <CoderName>\n", cmd);
-    exit(1);
+    fprintf(stdout, "\t<-f <fromcode>>.\n"); 
+    fprintf(stdout, "\t<-t <tocode>>.\n"); 
 }
 
-int prepInputFile(const char* name){
-    if(name == NULL){
-        input = stdin;
-        return 0;
+int Lconv::parseArgs(int argc, const char* argv[], int& i){
+    int ret = IOApp::parseArgs(argc, argv, i);
+
+    switch(ret){
+    case PARSE_OK:
+    case PARSE_ERROR:
+        return ret;
     }
 
-    input = fopen(name, "r");
+    if(!strcmp(argv[i], "-f")){
+        if(i+1<argc){
+            ++ i;
 
-    if(input){
-        return 0;
+            fromcode = argv[i];
+            return PARSE_OK;
+        }
     }
-
-    return 1;
+    else if(!strcmp(argv[i], "-t")){
+        if(i+1<argc){
+            ++ i;
+            tocode = argv[i];
+            return PARSE_OK;
+        }
+    }
+    return PARSE_UNKNOWN;
 }
 
-int prepOutputFile(const char* name){
-    if(name == NULL){
-        output = stdout;
-        return 0;
+int Lconv::prepare(){
+    conv.init(tocode, fromcode);
+
+    int ret = 0;
+    if((ret = IOApp::prepare())){
+        return ret;
     }
 
-    input = fopen(name, "w");
+    size_t s = IOApp::buf.size;
 
-    if(input){
-        return 0;
+    if(s==0){
+        s = 16 * 1024;
     }
 
-    return 1;
+    return buf.intialize(s);
 }
 
-void cleanupInputFile(){
-    if(input != stdin){
-        fclose(input);
-    }
-}
+int Lconv::handleLine(Buffer& line){
+    buf.len = conv.convert(line.buf, line.len, buf.buf, buf.size);
 
-void cleanupOutputFile(){
-    if(output != stdout){
-        fclose(output);
-    }
-}
-
-int prepMem(int size){
-    if(size <=0){
+    if(buf.len == (size_t)-1){
         return 1;
     }
 
-    line = (char*) malloc(size);
-    lineLen = size;
-
-    bufLen = size * 6;
-    buf = (char*) malloc(bufLen);
-
+    fwrite(buf.buf, buf.len, 1, out);
     return 0;
 }
-
-void cleanupMem(){
-    if(line){
-        free(line);
-    }
-
-    if(buf){
-        free(buf);
-    }
-}
-
-void parseArgs(int argc, const char* argv[]){
-    int i=1;
-    for(;i<argc; i++){
-        if(!strcmp(argv[i], "-f")){
-            if(i+1<argc){
-                ++ i;
-                fromcode = argv[i];
-                continue;
-            }
-        }
-        else if(!strcmp(argv[i], "-t")){
-            if(i+1<argc){
-                ++ i;
-                tocode = argv[i];
-                continue;
-            }
-        }
-        else if(!strcmp(argv[i], "-i")){
-            if(i+1<argc){
-                ++ i;
-                inputFileName = argv[i];
-                continue;
-            }
-        }
-
-        break;
-    }
-}
-
 
 int main(int argc, const char* argv[]){
-    iconv_t conv = NULL;
-    char* line=NULL;
-    size_t lineLen;
-    int read = 0;
+    Lconv conv;
 
-    char* buf;
-    int bufLen;
-
-    char* in;
-    size_t inLen;
-
-    char* out;
-    size_t outLen;
-
-    parseArgs(argc, argv);
-
-    if(fromcode == NULL || tocode == NULL){
-        printHelp(argv[0]);
-        return 1;
-    }
-
-    prepInputFile(inputFileName);
-    prepOutputFile(outputFileName);
-    prepMem(bufSize);
-
-    conv = iconv_open(fromcode, tocode);
-
-    if(conv < 0){
-        return errno;
-    }
-
-    while ((read = getline(&line, &lineLen, input)) != -1) {
-        for(int i=0; i<2; i++){
-            in = line;
-            inLen = lineLen;
-
-            out = buf;
-            outLen = bufLen;
-            if(iconv(conv, &in, &inLen, &out, &outLen)<0){
-                int code = errno;
-
-                if(code == E2BIG){
-
-                    continue;
-                }
-                else{
-                    fprintf(stderr, "error:%s", line);
-                }
-            }
-
-            fprintf(output, "%s", out);
-            break;
-        }
-    }
-
-    iconv_close(conv);
-
-    cleanupMem();
-    cleanupInputFile();
-    cleanupOutputFile();
-
-    return 0;
+    return conv.run(argc, argv);
 }
