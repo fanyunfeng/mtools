@@ -1,1 +1,1 @@
-SUBDIRS=lib regex lconv
+SUBDIRS=lib regex lconv ncut
